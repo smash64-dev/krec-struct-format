@@ -5,15 +5,28 @@ meta:
   file-extension: krec
   license: CC0-1.0
   endian: le
-  imports:
-    - krec
 seq:
   - id: header
-    type: krec::header
+    type: header
   - id: playback
     type: playback
     repeat: eos
 types:
+  event_chat:
+    seq:
+      - id: nickname
+        type: strz
+        encoding: utf-8
+      - id: message
+        type: strz
+        encoding: utf-8
+  event_drop:
+    seq:
+      - id: nickname
+        type: strz
+        encoding: utf-8
+      - id: player_id
+        type: s4le
   event_values:
     seq:
       - id: size
@@ -21,38 +34,49 @@ types:
       - id: values
         size: size
         type: values(size)
+  header:
+    seq:
+      - id: magic
+        contents: 'KRC0'
+      - id: app_name
+        size: 128
+        type: strz
+        encoding: utf-8
+      - id: game_name
+        size: 128
+        type: strz
+        encoding: utf-8
+      - id: time
+        type: s4le
+      - id: player_id
+        type: s4le
+      - id: player_count
+        type: s4le
   playback:
     seq:
       - id: type
         type: s1
-        enum: krec::playback::event
+        enum: event
       - id: body
         type:
           switch-on: type
           cases:
-            'krec::playback::event::chat': krec::event_chat
-            'krec::playback::event::values': event_values
-            'krec::playback::event::drop': krec::event_drop
+            'event::chat': event_chat
+            'event::values': event_values
+            'event::drop': event_drop
+    enums:
+      event:
+        8: chat
+        18: values
+        20: drop
   port:
     seq:
       - id: id
         type: s1
       - id: type
         type: s1
-        enum: type
       - id: body
-        type:
-          switch-on: type
-          cases:
-            'type::get_keys': get_keys
-            'type::read_controller': read_controller
-            'type::apply_cheat': apply_cheat
         size-eos: true
-    enums:
-      type:
-        32: get_keys
-        33: read_controller
-        36: apply_cheat
   values:
     params:
       - id: size
