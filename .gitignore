@@ -1,3 +1,6 @@
 # .gitignore
 
 build
+
+examples/python/__pycache__/
+examples/python/lib

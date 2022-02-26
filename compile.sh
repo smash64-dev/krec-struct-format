@@ -2,6 +2,7 @@
 # shellcheck disable=SC2068
 # compile.sh - quickly compile a struct for all targets
 
+EXAMPLES="examples"
 KSC="$(which kaitai-struct-compiler 2>/dev/null)"
 OUTPUT="${OUTPUT:-build}"
 STRUCTS="$(find . -type f -name "*.ksy")"
@@ -20,4 +21,8 @@ for struct in ${STRUCTS[@]}; do
     "$KSC" --outdir "${OUTPUT}/${name}" --target all "$struct"
 
     (cd "$OUTPUT" && zip -r "${name}.zip" "${name}")
+
+    # python libraries for examples
+    mkdir -p "${EXAMPLES}/python/lib"
+    cp -rf "${OUTPUT}/${name}/python/"*.py "${EXAMPLES}/python/lib/"
 done
