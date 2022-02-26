@@ -1,9 +1,10 @@
 meta:
-  id: krec_generic
+  id: krec
   title: Open Kaillera Recording file
   application: kailleraclient.dll
   file-extension: krec
   license: CC0-1.0
+  endian: le
 seq:
   - id: header
     type: header
@@ -11,7 +12,6 @@ seq:
     type: playback
     repeat: eos
 types:
-  empty: {}
   event_chat:
     seq:
       - id: nickname
@@ -30,14 +30,10 @@ types:
   event_values:
     seq:
       - id: size
-        type: s2le
+        type: s2
       - id: values
         size: size
-        type:
-          switch-on: size
-          cases:
-            0: empty
-            _: values
+        type: values(size)
   header:
     seq:
       - id: magic
@@ -82,8 +78,11 @@ types:
       - id: body
         size-eos: true
   values:
+    params:
+      - id: size
+        type: s2
     seq:
       - id: port
-        size: 24
+        size: size
         type: port
         repeat: eos
