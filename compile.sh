@@ -2,7 +2,7 @@
 # shellcheck disable=SC2068
 # compile.sh - quickly compile a struct for all targets
 
-KSC="$(which kaitai-struct-compilerx 2>/dev/null)"
+KSC="$(which kaitai-struct-compiler 2>/dev/null)"
 OUTPUT="${OUTPUT:-build}"
 STRUCTS="$(find . -type f -name "*.ksy")"
 
