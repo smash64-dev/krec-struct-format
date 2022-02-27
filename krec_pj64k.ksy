@@ -90,13 +90,13 @@ types:
         36: apply_cheat
   values:
     params:
-      - id: ports
+      - id: count
         type: s2
-      - id: total
+      - id: size
         type: s2
     seq:
-      - id: port
-        size: total / ports
+      - id: ports
+        size: size / count
         type: port
         repeat: eos
 
