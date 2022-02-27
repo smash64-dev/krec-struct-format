@@ -200,3 +200,7 @@ types:
         4: read_eeprom
         5: write_eeprom
         255: reset_controller
+    instances:
+      os_cont_pad:
+        value: pif_rx
+        if: pif_tx == pif_cmd::read_values
