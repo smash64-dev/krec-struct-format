@@ -33,7 +33,7 @@ types:
         type: s2
       - id: values
         size: size
-        type: values(size)
+        type: values(_root.header.player_count, size)
   header:
     seq:
       - id: magic
@@ -79,10 +79,12 @@ types:
         size-eos: true
   values:
     params:
-      - id: size
+      - id: ports
+        type: s2
+      - id: total
         type: s2
     seq:
       - id: port
-        size: size
+        size: total / ports
         type: port
         repeat: eos

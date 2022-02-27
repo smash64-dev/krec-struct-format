@@ -33,7 +33,7 @@ types:
         type: s2
       - id: values
         size: size
-        type: values(size)
+        type: values(_root.header.player_count, size)
   header:
     seq:
       - id: magic
@@ -75,15 +75,28 @@ types:
         type: s1
       - id: type
         type: s1
+        enum: type
       - id: body
-        size-eos: true
+        type:
+          switch-on: type
+          cases:
+            'type::get_keys': get_keys
+            'type::read_controller': read_controller
+            'type::apply_cheat': apply_cheat
+    enums:
+      type:
+        32: get_keys
+        33: read_controller
+        36: apply_cheat
   values:
     params:
-      - id: size
+      - id: ports
+        type: s2
+      - id: total
         type: s2
     seq:
       - id: port
-        size: size
+        size: total / ports
         type: port
         repeat: eos
 
