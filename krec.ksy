@@ -57,7 +57,7 @@ types:
       - id: type
         type: s1
         enum: event
-      - id: body
+      - id: data
         type:
           switch-on: type
           cases:
@@ -75,7 +75,7 @@ types:
         type: s1
       - id: type
         type: s1
-      - id: body
+      - id: data
         size-eos: true
   values:
     params:

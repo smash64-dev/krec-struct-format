@@ -21,8 +21,8 @@ def show_messages(playback: Krec.Playback, start_time: int):
 
     for id, event in enumerate(playback):
         if event.type == Krec.Playback.Event.chat:
-            text = event.body.message
-            user = event.body.nickname
+            text = event.data.message
+            user = event.data.nickname
             time = datetime.datetime.fromtimestamp(start_time + (id/60))
             print(f"  [{time.strftime('%Y-%m-%d %H:%M:%S')}] <{user}> {text}")
 
