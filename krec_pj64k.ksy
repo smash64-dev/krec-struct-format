@@ -88,6 +88,9 @@ types:
         32: get_keys
         33: read_controller
         36: apply_cheat
+    instances:
+      player_id:
+        value: id - 15
   values:
     params:
       - id: count
