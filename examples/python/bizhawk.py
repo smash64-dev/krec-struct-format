@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import copy
 import json
 import hashlib
 import os
@@ -7,7 +8,7 @@ import shutil
 import tempfile
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable
+from typing import Callable, Tuple
 
 
 @dataclass
@@ -19,13 +20,13 @@ class Bk2Map:
     y_axis: bool = False
 
     def swap_axis(self, swap: bool):
-        obj = self
+        obj = copy.deepcopy(self)
         if swap and self.x_axis:
-            obj.bk2_key = self.bk2_key.replace('X', 'Y')
-            obj.data_attr = obj.data_attr.replace('X', 'Y').replace('x', 'y')
+            obj.bk2_key = self.bk2_key.replace('X', 'Y').replace('x', 'y')
+            obj.data_attr = self.data_attr.replace('X', 'Y').replace('x', 'y')
         if swap and self.y_axis:
-            obj.bk2_key = self.bk2_key.replace('Y', 'X')
-            obj.data_attr = obj.data_attr.replace('Y', 'X').replace('y', 'x')
+            obj.bk2_key = self.bk2_key.replace('Y', 'X').replace('y', 'x')
+            obj.data_attr = self.data_attr.replace('Y', 'X').replace('y', 'x')
         return obj
 
 
@@ -110,7 +111,7 @@ class InputLog:
         return f"[{self.tag}]\r\n"
 
     def log_key(self, players: int = 4):
-        log_key = 'log_key:#'
+        log_key = 'LogKey:#'
         for map in self.power.maps:
             log_key += f"{map.bk2_key}|"
 
@@ -121,7 +122,7 @@ class InputLog:
                 log_key += f"P{id+1} {swap.bk2_key}|"
         return f"{log_key}\r\n"
 
-    def __str__(self, inputs: list, players: int = 4):
+    def __str__(self, inputs: list = [], players: int = 4):
         output = '|'
         output += f"{str(self.power)}|"
 
@@ -144,7 +145,7 @@ class Subtitle:
     def __str__(self):
         return (
             f"subtitle {self.frame} {self.x_pos} {self.y_pos} "
-            f"{self.length} {self.message}\r\n"
+            f"{self.length} {self.color} {self.message}\r\n"
         )
 
 
@@ -157,12 +158,13 @@ class SyncSettings:
 
     def build_settings(self):
         full_type = (
-            f"BizHawk.Emulation.Cores.Consoles.Nintendo.{self.type}, "
+            f"BizHawk.Emulation.Cores.{self.type}, "
             "BizHawk.Emulation.Cores"
         )
         settings = {'o': {"$type": full_type}}
-        settings.update(self.sync_settings)
-        return self.set_controllers(settings, self.ports)
+        settings = self.set_controllers(settings, self.ports)
+        settings['o'].update(self.sync_settings)
+        return settings
 
     def to_json(self):
         return json.dumps(
@@ -183,27 +185,30 @@ class BizHawk(object):
 
         self.comments: list[Comment] = []
         self.header = Header(ver, game.name, game.sha1(), core.value[1])
-        self.input_log: InputLog = self.default_input_log()
         self.subtitles: list[Subtitle] = []
 
+        ares_base = 'Consoles.Nintendo.Ares64'
         match core:
             case self.Core.ARES_ACCURACY:
+                self.input_log: InputLog = self.__ares_input_log()
                 self.sync_settings = SyncSettings(
-                    type='Ares64.Accuracy.Ares64+Ares64SyncSettings',
+                    type=f"{ares_base}.Accuracy.Ares64+Ares64SyncSettings",
                     ports=self.ports,
                     set_controllers=self.__ares_set_controllers,
                     sync_settings=self.__ares_sync_settings())
 
             case self.Core.ARES_PERFORMANCE:
+                self.input_log: InputLog = self.__ares_input_log()
                 self.sync_settings = SyncSettings(
-                    type='Ares64.Performance.Ares64+Ares64SyncSettings',
+                    type=f"{ares_base}.Performance.Ares64+Ares64SyncSettings",
                     ports=self.ports,
                     set_controllers=self.__ares_set_controllers,
                     sync_settings=self.__ares_sync_settings())
 
             case self.Core.MUPEN64PLUS:
+                self.input_log: InputLog = self.__mupen64plus_input_log()
                 self.sync_settings = SyncSettings(
-                    type='N64.N64sync_settings',
+                    type='Nintendo.N64.N64SyncSettings',
                     ports=self.ports,
                     set_controllers=self.__mupen64plus_set_controllers,
                     sync_settings=self.__mupen64plus_sync_settings())
@@ -241,13 +246,10 @@ class BizHawk(object):
             os.rename(archive, name)
         return name
 
-    # input log - order matters here
-    def default_input_log(self):
-        power_maps = [Bk2Map('Reset', ''), Bk2Map('Power', '')]
+    def __n64_mappings(self) -> Tuple[list[Bk2Map], list[bool]]:
         key_maps = [
             Bk2Map('Y Axis',  '', y_axis=True),
             Bk2Map('X Axis',  '', x_axis=True),
-            # TODO: these are not used by Ares
             Bk2Map('A Up',    ''),
             Bk2Map('A Down',  ''),
             Bk2Map('A Left',  ''),
@@ -268,28 +270,44 @@ class BizHawk(object):
             Bk2Map('R',       'r'),
         ]
         port_swaps = [False, True, False, True]
+        return key_maps, port_swaps
+
+    def __power_mappings(self) -> list[Bk2Map]:
+        return [Bk2Map('Reset', ''), Bk2Map('Power', '')]
+
+    # ares cores
+    def __ares_input_log(self) -> InputLog:
+        power_maps = self.__power_mappings()
+        key_map, port_swaps = self.__n64_mappings()
+        ares_map = list(filter(
+            lambda map: not map.bk2_key.startswith('A '), key_map))
 
         port_maps = [None, None, None, None]
         for id, plugged in enumerate(self.ports):
-            port_maps[id] = Inputs(key_maps) if plugged else None
+            port_maps[id] = Inputs(ares_map) if plugged else None
         return InputLog(Inputs(power_maps), port_maps, port_swaps)
 
-    # ares cores
-    def __ares_set_controllers(self, settings, ports):
+    def __ares_set_controllers(self, settings, ports) -> dict:
         for id, port in enumerate(ports):
             settings["o"][f"P{id+1}Controller"] = 2 if port else 0
         return settings
 
-    def __ares_sync_settings(self):
+    def __ares_sync_settings(self) -> dict:
         return {
-            # "EnableVulkan": True,
             "RestrictAnalogRange": False,
-            # "SuperSample": False,
-            # "VulkanUpscale": 1
         }
 
     # mupen64plus core
-    def __mupen64plus_set_controllers(self, settings, ports):
+    def __mupen64plus_input_log(self) -> InputLog:
+        power_maps = self.__power_mappings()
+        mupen_map, port_swaps = self.__n64_mappings()
+
+        port_maps = [None, None, None, None]
+        for id, plugged in enumerate(self.ports):
+            port_maps[id] = Inputs(mupen_map) if plugged else None
+        return InputLog(Inputs(power_maps), port_maps, port_swaps)
+
+    def __mupen64plus_set_controllers(self, settings, ports) -> dict:
         controllers = [None] * 4
         for id, port in enumerate(ports):
             controllers[id] = {"PakType": 1, "IsConnected": bool(port)}
@@ -297,7 +315,7 @@ class BizHawk(object):
         settings["o"]["Controllers"] = controllers
         return settings
 
-    def __mupen64plus_sync_settings(self):
+    def __mupen64plus_sync_settings(self) -> dict:
         return {
             "Core": 1,
             "Rsp": 0,

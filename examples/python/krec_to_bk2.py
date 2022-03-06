@@ -11,14 +11,14 @@ def determine_ports(values: list[tuple[int, Krec.Playback]]):
     playback: Krec.Playback
     for _, playback in values:
         ports: list[Krec.Port] = playback.data.values.ports
-
         for port in ports:
-            plugged[port.player_id-1] = True
+            if port.player_id in range(1, 4, 1):
+                plugged[port.player_id-1] = True
     return plugged
 
 
 def krec_mapping(bizhawk: BizHawk):
-    mapping = bizhawk.default_input_log()
+    mapping = bizhawk.input_log
     input: Inputs
     map: Bk2Map
     for input in mapping.keys:
@@ -81,6 +81,9 @@ def parse_inputs(values, input_log: InputLog, plugged: list[bool]):
         port: Krec.Port
 
         for port in ports:
+            if port.type == Krec.Port.Type.get_keys:
+                data[port.player_id-1] = port.data.os_cont_pad
+
             if port.type == Krec.Port.Type.read_controller:
                 data[port.player_id-1] = port.data.os_cont_pad
 
